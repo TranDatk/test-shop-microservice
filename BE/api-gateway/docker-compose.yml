@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build: .
+    container_name: api-gateway
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=shop-realm
+      - KEYCLOAK_CLIENT_ID=api-gateway
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+    networks:
+      - microservice-network
+
+networks:
+  microservice-network:
+    name: shop-microservices_microservice-network
+    external: true

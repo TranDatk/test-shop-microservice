@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # PostgreSQL container cho test
+  postgres-test:
+    image: postgres:14-alpine
+    container_name: postgres-test
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shopdb_test
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+    networks:
+      - test-network
+
+  # Redis container cho test  
+  redis-test:
+    image: redis:alpine
+    container_name: redis-test
+    ports:
+      - "6380:6379"
+    networks:
+      - test-network
+
+  # RabbitMQ container cho test
+  rabbitmq-test:
+    image: rabbitmq:3-management
+    container_name: rabbitmq-test
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - test-network
+
+  # User Service Tests
+  user-service-test:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile.test
+    container_name: user-service-test
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shopdb_test
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_PORT=5432
+      - JWT_SECRET=test_jwt_secret
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq-test:5672
+    depends_on:
+      - postgres-test
+      - rabbitmq-test
+    networks:
+      - test-network
+
+  # Product Service Tests
+  product-service-test:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile.test
+    container_name: product-service-test
+    environment:
+      - NODE_ENV=test
+      - PORT=3002
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shopdb_test
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_PORT=5432
+      - JWT_SECRET=test_jwt_secret
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq-test:5672
+    depends_on:
+      - postgres-test
+      - rabbitmq-test
+    networks:
+      - test-network
+
+  # Order Service Tests
+  order-service-test:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile.test
+    container_name: order-service-test
+    environment:
+      - NODE_ENV=test
+      - PORT=3003
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=shopdb_test
+      - POSTGRES_HOST=postgres-test
+      - POSTGRES_PORT=5432
+      - JWT_SECRET=test_jwt_secret
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq-test:5672
+      - PRODUCT_SERVICE_URL=http://product-service-test:3002
+    depends_on:
+      - postgres-test
+      - rabbitmq-test
+      - product-service-test
+    networks:
+      - test-network
+
+  # Cart Service Tests
+  cart-service-test:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile.test
+    container_name: cart-service-test
+    environment:
+      - NODE_ENV=test
+      - PORT=3004
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - JWT_SECRET=test_jwt_secret
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq-test:5672
+      - PRODUCT_SERVICE_URL=http://product-service-test:3002
+    depends_on:
+      - redis-test
+      - rabbitmq-test
+      - product-service-test
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  postgres-test-data: 
